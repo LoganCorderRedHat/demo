@@ -1,0 +1,27 @@
+- name: Firewall compliance check
+  hosts: web
+  become: yes
+  vars:
+    allowed_ports:
+      - 22
+      - 80
+      - 443
+
+  tasks:
+    - name: Gather listening ports
+      ansible.builtin.command: ss -tuln
+      register: portscan
+      changed_when: false
+
+    - name: Report open ports
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} open ports:\n{{ portscan.stdout_lines }}"
+
+    - name: Close unauthorized ports
+      ansible.builtin.firewalld:
+        port: "{{ item }}/tcp"
+        state: disabled
+        permanent: yes
+      loop: "{{ range(1,65535) | list }}"
+      when: item not in allowed_ports
+      ignore_errors: yes
